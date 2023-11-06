@@ -64,7 +64,7 @@ public class RestManager : MonoBehaviour
 
     public string GetSessionStatsJson() {
         // Add the {} to the stats json object
-        string statsAux = "{\n" + statsJson + "\n}";
+        string statsAux = "{\"data\": {\n" + statsJson + "\n}}";
 
         // If the stats objects is not null, save a copy to be transferred to the
         // game object and reset the buffer string (ready for a new session)
@@ -80,17 +80,17 @@ public class RestManager : MonoBehaviour
         statsJson = null;
     }
 
-    public void SendStats(string jsonData) {
+    public void SendStats(string timestamp, string jsonData) {
         // Create a thread to send stats
-        StartCoroutine(SendStatsToRest(jsonData));
+        StartCoroutine(SendStatsToRest(timestamp, jsonData));
     }
 
     #endregion
 
     #region COROUTINES
-    private IEnumerator SendStatsToRest(string jsonData) {
+    private IEnumerator SendStatsToRest(string timestamp, string jsonData) {
 
-        UnityWebRequest webRequest = LatencyManager.CreateApiPostRequest(rest_URL, jsonData);
+        UnityWebRequest webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/{timestamp}", jsonData);
         UnityWebRequestAsyncOperation webResponse = webRequest.SendWebRequest();
 
         // Wait until a response is received 

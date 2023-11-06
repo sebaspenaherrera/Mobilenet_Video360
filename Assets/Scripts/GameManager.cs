@@ -28,7 +28,7 @@ public class GameManager : MonoBehaviour
     private int resSW = 0;
     private int resProfile = 0;
     private int videoHeight = 0;
-    private double initTime = 0.00; 
+    private double initTime = 0.00;
     private double counterFPSHMD = 0.00;
     private double avgFPSHMD = 0.00;
     private double maxFPSHMD = 0.00;
@@ -38,6 +38,7 @@ public class GameManager : MonoBehaviour
     private bool mediaOpened = false;
     private bool firstSecond = false;
 
+    private string experimentTimestamp = "";
     // Alias
     private PlayerManager player;
     private StatsManager stats;
@@ -89,6 +90,7 @@ public class GameManager : MonoBehaviour
                 // Check if the iteration has initiated the playback
                 if (!mediaOpened)
                 {
+                    experimentTimestamp = GetUnixTimestamp();
                     player.LoadMediaAndStart();
                     mediaOpened = true;
                     
@@ -142,8 +144,6 @@ public class GameManager : MonoBehaviour
         else
         {
             Application.Quit(0);
-            // TODO Request info from CPE, or not
-            // TODO Send Measurements or 
         }
     }
 

@@ -4,8 +4,9 @@ using UnityEngine;
 using HuaweiAPI;
 using System.Xml;
 using SimpleJSON;
+using System.Threading;
 
-public class CPEManager : MonoBehaviour
+public class CPEClient : MonoBehaviour
 {
     #region FIELDS
     // Private fields
@@ -17,7 +18,7 @@ public class CPEManager : MonoBehaviour
     int max_attempts = 3;
 
     // Shared instances
-    private static CPEManager _sharedInstance;
+    private static CPEClient _sharedInstance;
     #endregion
 
     #region UNITY METHODS
@@ -28,6 +29,10 @@ public class CPEManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        string stateConnection = "";
+        //StartCoroutine(this.CheckConnection(ip_cpe, state => { stateConnection = state.ToString(); }));
+        StartCoroutine(this.UserLogin(ip_cpe, username, password, state => { stateConnection = state.ToString(); }));
+        Debug.Log($"LA CONEXION EN EL MAIN THREAD ES = {stateConnection}");
         //StartCoroutine(GetCPEData());
     }
 
@@ -236,6 +241,33 @@ public class CPEManager : MonoBehaviour
 
         return jsonResponse;
     }
+
+    /*IEnumerator CheckConnectionAsync(string ip_addr, System.Action<bool> callback) {
+        XmlDocument checkLoginState;
+
+        checkLoginState = this.CallAsyncGet(ip_addr, "api/user/state-login");
+        
+        yield return new WaitUntil(() => checkLoginState != null);
+
+        if (checkLoginState.SelectSingleNode("//response/State").InnerText == "0")
+        {
+            Debug.Log("Already logged in");
+            callback.Invoke(true);
+        }
+        else
+        {
+            Debug.Log("Not logged in");
+            callback.Invoke(false);
+        }
+            
+    }*/
+
+    /*bool CheckConnection(string ip_addr) {
+        bool state = false;
+        StartCoroutine(CheckConnectionAsync(ip_addr, callback => { state = callback; }));
+
+        return state;
+    }*/
     #endregion
     /*
     #region PUBLIC METHODS
@@ -306,7 +338,7 @@ public class CPEManager : MonoBehaviour
         return null;
     }
 
-    public static CPEManager GetInstance() {
+    public static CPEClient GetInstance() {
         return _sharedInstance;
     }
 

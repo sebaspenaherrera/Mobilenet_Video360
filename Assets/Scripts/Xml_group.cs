@@ -54,4 +54,44 @@ public class Xml_group : MonoBehaviour
         return jsonNode;
     }
 
+    public static JSONNode ConvertStatsXmlDocumentToJson(XmlDocument xmlDocument)
+    {
+        JSONNode jsonNode = new JSONObject();
+        XmlElement node = xmlDocument.DocumentElement;
+
+        foreach (XmlNode childNode in node)
+        {
+            // Check if the xml node has several values separated by " " (space) and instead of being xml child nodes
+            if (childNode.InnerText.Contains(" "))
+            {
+                string[] subnodes = childNode.InnerText.Split(" ");
+                foreach (string subnode in subnodes)
+                {
+                    string[] keyvalue = subnode.Split(":");
+                    jsonNode[$"{childNode.Name}_{keyvalue[0]}"] = keyvalue[1];
+                }
+            }
+            // If the node is a simple node, only add a json node with its value
+            else
+            {
+                jsonNode[childNode.Name] = childNode.InnerText;
+            }
+
+
+        }
+        return jsonNode;
+    }
+
+    public static JSONNode ConvertXmlDocumentToJson(XmlDocument xmlDocument)
+    {
+        JSONNode jsonNode = new JSONObject();
+        XmlElement node = xmlDocument.DocumentElement;
+
+        foreach (XmlNode childNode in node)
+        {
+            jsonNode[childNode.Name] = childNode.InnerText;
+        }
+        return jsonNode;
+    }
+
 }

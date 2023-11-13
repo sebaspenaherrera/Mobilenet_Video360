@@ -1,12 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using SimpleJSON;
 
 public class StatsManager : MonoBehaviour
 {
     //FIELDS
     private KQI_group stats;
+    private string cpe_stats;
 
     // Shared instance
     private static StatsManager _sharedInstance;
@@ -16,6 +17,7 @@ public class StatsManager : MonoBehaviour
     private AndroidTrafficStats androidStats;
     private GameManager gameManager;
     private LatencyManager latencyManager;
+    private CPEClient cpe;
 
 
     void Awake()
@@ -31,6 +33,7 @@ public class StatsManager : MonoBehaviour
         androidStats = AndroidTrafficStats.GetInstance();
         player = PlayerManager.GetInstance();
         latencyManager = LatencyManager.GetInstance();
+        cpe = CPEClient.GetInstance();
     }
 
     public static StatsManager GetInstance() {
@@ -39,6 +42,13 @@ public class StatsManager : MonoBehaviour
 
     public KQI_group GetStatsObject() {
         return stats;
+    }
+
+    public string GetCPEStats() {
+        if (cpe_stats is "") {
+            return "{}";
+        }
+        else return cpe_stats;
     }
 
     public void ResetStats() {
@@ -95,6 +105,9 @@ public class StatsManager : MonoBehaviour
         stats.isStalled = player.IsStalled();
         stats.isPlaying = player.IsPlaying();
         stats.isBuffering = player.IsBuffering();
+
+        // CPE STATS
+        cpe_stats = cpe.GetCPEStats();
     }
 
 }

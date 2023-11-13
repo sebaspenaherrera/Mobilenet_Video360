@@ -5,7 +5,7 @@ using System.Xml;
 using System.Security.Cryptography;
 using System.Text;
 using UnityEngine.Networking;
-using System.Threading;
+using SimpleJSON;
 
 /// <summary>
 /// Set of tool used to send POST/GET request 
@@ -227,13 +227,13 @@ public static class CPEClientTools
     }
 
 
-    public static IEnumerator POST(this MonoBehaviour monoBehaviour, string ip_address, string data, string api_type, System.Action<XmlDocument> callback)
+    public static IEnumerator POST(string ip_address, string data, string api_type, System.Action<XmlDocument> callback)
     {
         Debug.Log("Sending POST request to " + api_type + "..");
 
         //get session id token
-        XmlDocument Sestoken;
-        yield return Sestoken = monoBehaviour.CallAsyncGetInternal(ip_address, "api/webserver/SesTokInfo");
+        XmlDocument Sestoken = new XmlDocument();
+        yield return GET_internal(ip_address, CPE_API_type.REQUEST_TOKEN, callback => { Sestoken = callback; });
         _CurrentSessionID = Sestoken.SelectSingleNode("//response/SesInfo").InnerText;
         _CurrentToken = Sestoken.SelectSingleNode("//response/TokInfo").InnerText;
 
@@ -384,26 +384,6 @@ public static class CPEClientTools
 
     }
 
-    public static XmlDocument CallAsyncGetInternal(this MonoBehaviour monoBehaviour, string ip_address, string api_type) {
-        // Declare a container for te callback returned by the coroutine
-        XmlDocument api_response = new XmlDocument();
-        // Call the coroutine async
-        monoBehaviour.StartCoroutine(GET_internal(ip_address, api_type, callback => { api_response = callback; }));
-        // Return the response
-        return api_response;
-    }
-
-
-    //public static XmlDocument CallAsyncGet(this MonoBehaviour monoBehaviour, string ip_address, string api_type)
-    //{
-    //    // Declare a container for te callback returned by the coroutine
-    //    XmlDocument api_response = new XmlDocument();
-    //    // Call the coroutine async
-    //    monoBehaviour.StartCoroutine(GET(ip_address, api_type, callback => { Debug.Log("He recibido esto como callback " + callback.OuterXml); api_response = (XmlDocument)callback.Clone(); }));
-    //    // Return the response
-    //    Debug.Log($"API RESPONSE = {api_response.OuterXml}");
-    //    return api_response;
-    //}
 
     public static IEnumerator CheckConnection(this MonoBehaviour monoBehaviour, string ip_address, System.Action<bool> state)
     {
@@ -441,7 +421,7 @@ public static class CPEClientTools
         }
     }
 
-    public static IEnumerator UserLogin(this MonoBehaviour monoBehaviour, string ip_address, string username, string password, System.Action<bool> isLogged) {
+    public static IEnumerator UserLogin(this MonoBehaviour monoBehaviour, string ip_address, string username, string password, int maxAttempts, System.Action<bool> isLogged) {
 
         // Request the authentication token and session to the CPE
         yield return Initialize(monoBehaviour, ip_address);
@@ -451,14 +431,14 @@ public static class CPEClientTools
         string logininfo = string.Format("<?xml version=\"1.0\" encoding=\"UTF-8\"?><request><Username>{0}</Username><Password>{1}</Password><password_type>4</password_type>", username, authinfo);
         Debug.Log($"POST body = {logininfo}");
 
-        // Send a post request to log in with the CPE
+        // Send a post request to log in with the CPE (# of attempts = maxAttempts)
         XmlDocument login = new XmlDocument();
         int i = 0;
-        while (i < 3) {
+        while (i < maxAttempts) {
             yield return POST_internal(ip_address, logininfo, CPE_API_type.LOGIN, callback => { login = callback; });
             Debug.Log($"Login response = {login.OuterXml}");
             if (XMLTool.Beautify(login).Contains("OK")) {
-                i = 3;
+                i = maxAttempts;
                 break;
             }
             else{
@@ -466,7 +446,7 @@ public static class CPEClientTools
             }
         }
 
-        //yield return POST_internal(ip_address, logininfo, CPE_API_type.LOGIN, callback => { login = callback; });
+        // Check if the server has logged in successfully through an OK in the body
 
         if (XMLTool.Beautify(login).Contains("OK"))
         {
@@ -480,26 +460,155 @@ public static class CPEClientTools
         }
     }
 
+    public static IEnumerator UserLogout(this MonoBehaviour monoBehaviour, string ip_address, string username, string password, System.Action<bool> hasLoggedOut) {
 
-    public static XmlDocument CallAsyncPostInternal(this MonoBehaviour monoBehaviour, string ip_address, string data, string api_type)
-    {
-        // Declare a container for te callback returned by the coroutine
-        XmlDocument api_response = new XmlDocument();
-        // Call the coroutine async
-        monoBehaviour.StartCoroutine(POST_internal(ip_address, data, api_type, callback => { api_response = callback; }));
-        // Return the response
-        return api_response;
+        // Encode the session information to be sent
+        string data = "<?xml version:\"1.0\" encoding=\"UTF-8\"?><request><Logout>1</Logout></request>";
+
+        XmlDocument logout = new XmlDocument();
+
+        // Send a post request to log in with the CPE (# of attempts = maxAttempts)
+        yield return POST_internal(ip_address, data, CPE_API_type.LOGOUT, callback => { logout = callback; });
+
+        // Check if the server has confirmed logout through an OK in the body
+        if (XMLTool.Beautify(logout).Contains("OK"))
+        {
+            Debug.Log("Logged out successfully");
+            hasLoggedOut.Invoke(true);
+        }
+        else
+        {
+            Debug.Log("Logout failed");
+            hasLoggedOut.Invoke(false);
+        }
     }
 
-    public static XmlDocument CallAsyncPOST(this MonoBehaviour monoBehaviour, string ip_address, string data, string api_type)
-    {
-        // Declare a container for te callback returned by the coroutine
-        XmlDocument api_response = new XmlDocument();
-        // Call the coroutine async
-        monoBehaviour.StartCoroutine(POST(monoBehaviour, ip_address, data, api_type, callback => { api_response = callback; }));
-        // Return the response
-        return api_response;
+    public static IEnumerator CPEMonitoring(this MonoBehaviour monoBehaviour, string ip_address, string username, string password, int maxAttempts, double iterTime, System.Action<bool> isMonitoring, System.Action<string> stats) {
+        // Determine the initial time of this iteration
+        double startTime = Time.realtimeSinceStartupAsDouble;
+
+        // Check if the glass has previously logged in with the CPE
+        bool isLogged = false;
+        yield return CheckConnection(monoBehaviour, ip_address, callback => { isLogged = callback; });
+
+        // If the HMD is not logged in with the CPE, attempt to connect using the API with a max number of attempts
+        if (!isLogged)
+        {
+            yield return UserLogin(monoBehaviour, ip_address, username, password, maxAttempts, callback => { isLogged = callback; });
+        }
+
+            
+        double spentTime = Time.realtimeSinceStartupAsDouble - startTime;
+        Debug.Log("Time spent in CPE login = " + spentTime);
+        startTime = Time.realtimeSinceStartupAsDouble;
+
+        // If the attempt of Login was successful, request metrics, else jump this sample
+        if (isLogged)
+        {
+            isMonitoring.Invoke(true);
+            // Get signal stats
+            JSONNode signalStats = null;
+            yield return GetSignalJSON_internal(ip_address, callback => { signalStats = callback; });
+
+            // Get device info
+            JSONNode deviceInfo = null;
+            yield return GetDeviceInfoJSON_internal(ip_address, callback => { deviceInfo = callback; });
+
+            // Get traffic stats
+            JSONNode trafficStats = null;
+            yield return GetTrafficJSON_internal(ip_address, callback => { trafficStats = callback; });
+
+            // Reset stats
+            bool hasReset = false;
+            yield return ResetStats_internal(ip_address, callback => { hasReset = callback; });
+
+            // Build a JSON Node with that stats as subnodes
+            // Wrap each request with a json node
+            JSONNode jsonNode = new JSONObject();
+            jsonNode["signal"] = signalStats;
+            jsonNode["traffic"] = trafficStats;
+            jsonNode["info"] = deviceInfo;
+
+            stats.Invoke(jsonNode.ToString());
+            Debug.Log("Stats gathered = \n" + jsonNode.ToString());
+        }
+        else
+        {
+            stats.Invoke("");
+            isMonitoring.Invoke(false);
+        }
+
+        // Estimate the time spent in an iteration and the time to wait
+        spentTime = Time.realtimeSinceStartupAsDouble - startTime;
+        double waitTimeValue = iterTime - spentTime;
+        WaitForSecondsRealtime waitTime;
+
+        // Calculate the time to wait for new request
+        if (waitTimeValue <= 1.00)
+        {
+            waitTime = new WaitForSecondsRealtime((float)waitTimeValue);
+        }
+        else if (waitTimeValue == 0.00)
+        {
+            waitTime = new WaitForSecondsRealtime(0.00f);
+        }
+        else
+        {
+            waitTime = new WaitForSecondsRealtime((float)(waitTimeValue + iterTime));
+        }
+
+        // Suspend the thread until the time passes
+        yield return waitTime;
+        Debug.Log("Time spent in CPE stats query = " + spentTime);
     }
+
+    public static IEnumerator GetSignalJSON_internal(string ip_address, System.Action<JSONNode> stats) {
+        // Get signal stats
+        XmlDocument signal = new XmlDocument();
+        yield return GET_internal(ip_address, CPE_API_type.SIGNAL_STATS, callback => { signal = callback; });
+        JSONNode signalStats = Xml_group.ConvertStatsXmlDocumentToJson(signal);
+        stats.Invoke(signalStats);
+    }
+
+    public static IEnumerator GetDeviceInfoJSON_internal(string ip_address, System.Action<JSONNode> stats) {
+        // Get device info
+        XmlDocument device = new XmlDocument();
+        yield return GET_internal(ip_address, CPE_API_type.DEVICE_INFO, callback => { device = callback; });
+        JSONNode deviceInfo = Xml_group.ConvertXmlDocumentToJson(device);
+        stats.Invoke(deviceInfo);
+    }
+
+    public static IEnumerator GetTrafficJSON_internal(string ip_address, System.Action<JSONNode> stats)
+    {
+        // Get device info
+        XmlDocument traffic = new XmlDocument();
+        yield return GET_internal(ip_address, CPE_API_type.TRAFFIC_STATS, callback => { traffic = callback; });
+        JSONNode trafficStats = Xml_group.ConvertXmlDocumentToJson(traffic);
+        stats.Invoke(trafficStats);
+    }
+
+    public static IEnumerator ResetStats_internal(string ip_address, System.Action<bool> isReset) {
+        // Reset stats
+        //string data = @"<request><ClearTraffic>1</ClearTraffic></request>";
+        string data = "<?xml version:\"1.0\" encoding=\"UTF-8\"?><request><ClearTraffic>1</ClearTraffic></request>";
+        XmlDocument response = new XmlDocument();
+        yield return POST(ip_address, data, CPE_API_type.RESET_STATS, callback => { response = callback; });
+
+        Debug.Log(XMLTool.Beautify(response));
+        // Check the response
+        if (XMLTool.Beautify(response).Contains("OK"))
+        {
+            Debug.Log("Stats resetted at the CPE");
+            isReset.Invoke(true);
+        }
+        else
+        {
+            Debug.Log("Stats reset has been failed");
+            isReset.Invoke(false);
+        }
+    }
+
+
 
     /// <summary>
     /// WebClient for GET and POST request
@@ -574,24 +683,8 @@ public static class CPEClientTools
         {
             _sessionCookie = !string.IsNullOrEmpty(responserHeaders["Set-Cookie"]) ? responserHeaders["Set-Cookie"] : _sessionCookie;
         }
-
-        //if (!string.IsNullOrEmpty(responserHeaders["__RequestVerificationTokenOne"]))
-        //{
-        //    _requestTokenOne = responserHeaders["__RequestVerificationTokenOne"];
-        //}
-        //if (!string.IsNullOrEmpty(responserHeaders["__RequestVerificationTokenTwo"]))
-        //{
-        //    _requestTokenTwo = responserHeaders["__RequestVerificationTokenTwo"];
-        //}
-        //if (!string.IsNullOrEmpty(responserHeaders["__RequestVerificationToken"]))
-        //{
-        //    _requestToken = responserHeaders["__RequestVerificationToken"];
-        //}
-        //if (!string.IsNullOrEmpty(responserHeaders["Set-Cookie"]))
-        //{
-        //    _sessionCookie = responserHeaders["Set-Cookie"];
-        //}
     }
+
     /// <summary>
     /// This method is used to encode password and to encode product of user + encoded password to sha256
     /// </summary>
@@ -634,8 +727,6 @@ public static class CPEClientTools
 
 public static class XMLTool
 {
-    //at first i want to include this method in Tools class but as this is extension so i need to make a nother extension class
-
     /// <summary>
     /// Make response body xml readable
     /// </summary>
@@ -659,11 +750,22 @@ public static class XMLTool
     }
 }
 
+
 public static class CPE_API_type {
+    /// <summary>
+    /// Summarize the APIs to be used in this client
+    /// </summary>
+    /// <param name="doc"></param>
+    /// <returns></returns>
     public static readonly string CHECK_CONNECTION = "api/user/state-login";
     public static readonly string REQUEST_TOKEN = "api/webserver/SesTokInfo";
     public static readonly string LOGIN = "api/user/login";
     public static readonly string AUTHLOGIN = "/api/user/authentication_login";
+    public static readonly string LOGOUT = "api/user/logout";
+    public static readonly string SIGNAL_STATS = "api/device/signal";
+    public static readonly string TRAFFIC_STATS = "api/monitoring/traffic-statistics";
+    public static readonly string DEVICE_INFO = "api/device/information";
+    public static readonly string RESET_STATS = "api/monitoring/clear-traffic";
 }
 
     

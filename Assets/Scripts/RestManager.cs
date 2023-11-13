@@ -49,14 +49,18 @@ public class RestManager : MonoBehaviour
         return JsonUtility.ToJson(stats.GetStatsObject());
     }
 
+    public string GetCPEStatsString() {
+        return stats.GetCPEStats();
+    }
+
     public void AppendJson() {
         // If statsJson is null, initiate the string, else append the new json object
         if (statsJson is not null)
         {
-            statsJson += $", \"{sampleNumber}\": {GetCurrentStatsInJson()}";
+            statsJson += $", \"{sampleNumber}\": {{Service: {GetCurrentStatsInJson()}, CPE: {GetCPEStatsString()}}}";
         }
         else {
-            statsJson = $"\"{sampleNumber}\": {GetCurrentStatsInJson()}";
+            statsJson = $"\"{sampleNumber}\": {{Service: {GetCurrentStatsInJson()}, CPE: {GetCPEStatsString()}}}";
         }
         // Increase the sample counter
         sampleNumber++;
@@ -78,6 +82,7 @@ public class RestManager : MonoBehaviour
     private void ResetRestBuffer() {
         // Force reset the buffer string
         statsJson = null;
+        sampleNumber = 0;
     }
 
     public void SendStats(string timestamp, string jsonData) {

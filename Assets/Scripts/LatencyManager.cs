@@ -15,6 +15,7 @@ public class LatencyManager : MonoBehaviour
     private double timeResponse = 0.00;
     private double rtt = 0.00;
     private double rtt_ping = 0.00;
+    private double expectedDelay = 1.00;
     //private string url = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
     //private string url = "https://cdn.bitmovin.com/content/assets/playhouse-vr/mpds/105560.mpd";
     private string url;
@@ -100,7 +101,7 @@ public class LatencyManager : MonoBehaviour
     IEnumerator SendHeadRequest() {
 
         // Initialize the timer
-        double expectedDelay = 1.00;
+        
         WaitForSecondsRealtime waitTime;
 
         while (true) {

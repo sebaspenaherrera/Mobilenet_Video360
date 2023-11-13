@@ -13,7 +13,7 @@ public class GameManager : MonoBehaviour
     private string media_URL = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
     //"https://cdn.bitmovin.com/content/assets/playhouse-vr/mpds/105560.mpd"
     private string rest_URL = "127.0.0.1:8000/Video360";
-
+    private bool isCPEenabled = true;
 
     // Shared instance for GameManager resources access
     private static GameManager _sharedInstance;
@@ -44,6 +44,7 @@ public class GameManager : MonoBehaviour
     private StatsManager stats;
     private AndroidTrafficStats androidStats;
     private RestManager rest;
+    private CPEClient cpe;
 
     // ****************************** UNITY METHODS **********************************
     // Instance the shared instances 
@@ -55,12 +56,16 @@ public class GameManager : MonoBehaviour
     // Add a media track in the queue
     void Start()
     {
+        // Enable all the alias
         stats = StatsManager.GetInstance();
+        cpe = CPEClient.GetInstance();
         androidStats = AndroidTrafficStats.GetInstance();
         rest = RestManager.GetInstance();
         player = PlayerManager.GetInstance();
         player.AddMediaTrack(media_URL);
-        
+
+        // Activate/Deactivate the CPE client
+        cpe.SetEnableCPE(isCPEenabled);
     }
 
     private void Update()
@@ -78,73 +83,76 @@ public class GameManager : MonoBehaviour
     // ****************************** CLASS METHODS **********************************
     void InstanceExperiment()
     {
-
-        // EXPERIMENT CODE
-        // Control the number of iterations of the experiment (Starts from 0)
-        if (counterIter < maxIteration)
-        {
-            // SESSION ITERATION 
-            // Check the duration of a playback (Playback time < Duration = Active session)
-            if (counterTime <= duration)
+        // IF CPE has been enable wait until the authentication is done
+        if(cpe.IsConnectedWithCPE() || !isCPEenabled) {
+            // EXPERIMENT CODE
+            // Control the number of iterations of the experiment (Starts from 0)
+            if (counterIter < maxIteration)
             {
-                // Check if the iteration has initiated the playback
-                if (!mediaOpened)
+                // SESSION ITERATION 
+                // Check the duration of a playback (Playback time < Duration = Active session)
+                if (counterTime <= duration)
                 {
-                    experimentTimestamp = GetUnixTimestamp();
-                    player.LoadMediaAndStart();
-                    mediaOpened = true;
-                    
-                    
-                }
+                    // Check if the iteration has initiated the playback
+                    if (!mediaOpened)
+                    {
+                        experimentTimestamp = GetUnixTimestamp();
+                        player.LoadMediaAndStart();
+                        mediaOpened = true;
 
-                // HERE goes all the tasks that can be made each frame update (1/nFrames)s
-                // Estimate stats per second
-                if (IsANewSecond())
-                {
-                    InterSecondTasks();
+
+                    }
+
+                    // HERE goes all the tasks that can be made each frame update (1/nFrames)s
+                    // Estimate stats per second
+                    if (IsANewSecond())
+                    {
+                        InterSecondTasks();
+                    }
+                    // If an entire second has passed, average the instantaneous frame rates, reset the cycles counter
+                    // and increase the time counter in one second. 
+                    else
+                    {
+                        // Only take reference after passed the 1st second of each iteration
+                        if (!firstSecond)
+                        {
+                            videoHeight = player.GetPlayerInfo().GetVideoHeight();
+                            Debug.Log("Initial resolution = " + videoHeight);
+                            firstSecond = true;
+                        }
+                        CountResolutionSwitches();
+                        AverageFPS();
+                        stats.UpdateStats();
+                        // HERE goes the REST CODE. If DEMO mode is set send stats everysecond, else every session
+                        HandleRestStats();
+                        counterCycles = 0;
+                        counterTime++;
+                    }
                 }
-                // If an entire second has passed, average the instantaneous frame rates, reset the cycles counter
-                // and increase the time counter in one second. 
                 else
                 {
-                    // Only take reference after passed the 1st second of each iteration
-                    if (!firstSecond)
-                    {
-                        videoHeight = player.GetPlayerInfo().GetVideoHeight();
-                        Debug.Log("Initial resolution = " + videoHeight);
-                        firstSecond = true;
-                    }
-                    CountResolutionSwitches();
-                    AverageFPS();
-                    stats.UpdateStats();
-                    // HERE goes the REST CODE. If DEMO mode is set send stats everysecond, else every session
-                    HandleRestStats();
-                    counterCycles = 0;
-                    counterTime++;
+                    mediaOpened = player.CloseMediaPlayer();
+                    // Try to send session stats if testbed mode is set, else ignore this line
+                    SendSessionStats();
+                    // Set the parameters for a new iteration
+                    counterIter++;
+                    counterTime = 0;
+                    resProfile = 0;
+                    resSW = 0;
+                    firstSecond = false;
+                    player.GetPlayerInfo().GetPlaybackQualityStats().Reset();
+                    stats.ResetStats();
+
                 }
+                //
+
             }
             else
             {
-                mediaOpened = player.CloseMediaPlayer();
-                // Try to send session stats if testbed mode is set, else ignore this line
-                SendSessionStats();
-                // Set the parameters for a new iteration
-                counterIter++;
-                counterTime = 0;
-                resProfile = 0;
-                resSW = 0;
-                firstSecond = false;
-                player.GetPlayerInfo().GetPlaybackQualityStats().Reset();
-                stats.ResetStats();
-
+                Application.Quit(0);
             }
-            //
-            
         }
-        else
-        {
-            Application.Quit(0);
-        }
+        
     }
 
     bool IsANewSecond()

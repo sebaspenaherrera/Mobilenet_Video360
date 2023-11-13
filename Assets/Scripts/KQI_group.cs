@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using SimpleJSON;
 
 // This class is a skeleton for all the metrics measured by this client
 public class KQI_group
@@ -56,6 +57,9 @@ public class KQI_group
     public bool isStalled = false;
     public bool isPlaying = false;
     public bool isBuffering = false;
+
+    // CPPE STATS
+    //public string cpeStats = "";
 
     // DEFAULT CONSTRUCTOR
     public KQI_group() {

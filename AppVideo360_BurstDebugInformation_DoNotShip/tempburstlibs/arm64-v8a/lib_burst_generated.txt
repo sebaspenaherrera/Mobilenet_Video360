@@ -9,6 +9,11 @@ Library: /Users/SebasPenaherrera/Documents/DEMOS/VIDEO360/Mobilenet_Video360/Tem
 --target-framework=NetFramework
 --assembly-defines=Assembly-CSharp;
 --assembly-defines=AssistantCoreSDKRuntime;
+--assembly-defines=AVProVideo.Demos;
+--assembly-defines=AVProVideo.Extensions.Timeline;
+--assembly-defines=AVProVideo.Extensions.UnityUI;
+--assembly-defines=AVProVideo.Extensions.VisualEffectGraph;
+--assembly-defines=AVProVideo.Runtime;
 --assembly-defines=Facebook.Wit.Dictation;
 --assembly-defines=Meta.Voice.Hub.Runtime;
 --assembly-defines=Meta.Voice.Samples.BuiltInTimer;
@@ -134,6 +139,11 @@ Library: /Users/SebasPenaherrera/Documents/DEMOS/VIDEO360/Mobilenet_Video360/Tem
 --float-mode=Fast
 --assembly-defines=Assembly-CSharp;
 --assembly-defines=AssistantCoreSDKRuntime;
+--assembly-defines=AVProVideo.Demos;
+--assembly-defines=AVProVideo.Extensions.Timeline;
+--assembly-defines=AVProVideo.Extensions.UnityUI;
+--assembly-defines=AVProVideo.Extensions.VisualEffectGraph;
+--assembly-defines=AVProVideo.Runtime;
 --assembly-defines=Facebook.Wit.Dictation;
 --assembly-defines=Meta.Voice.Hub.Runtime;
 --assembly-defines=Meta.Voice.Samples.BuiltInTimer;

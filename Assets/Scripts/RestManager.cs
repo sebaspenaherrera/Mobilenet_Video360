@@ -15,6 +15,7 @@ public class RestManager : MonoBehaviour
     private string statsJson = null;
     private Dictionary<string, string> appendedStats = new Dictionary<string, string>();
     private int sampleNumber = 0;
+    private int mode = 0;
 
     // Alias
     private StatsManager stats;
@@ -39,6 +40,7 @@ public class RestManager : MonoBehaviour
         stats = StatsManager.GetInstance();
 
         rest_URL = gameManager.GetRestURL();
+        mode = gameManager.GetMode();
     }
 
     #endregion
@@ -49,6 +51,11 @@ public class RestManager : MonoBehaviour
         return JsonUtility.ToJson(stats.GetStatsObject());
     }
 
+    public string GetSampleStatsJson() {
+        statsJson = $"{{\"Service\": {GetCurrentStatsInJson()}, \"CPE\": {GetCPEStatsString()}}}";
+        return statsJson;
+    }
+
     public string GetCPEStatsString() {
         return stats.GetCPEStats();
     }
@@ -57,10 +64,10 @@ public class RestManager : MonoBehaviour
         // If statsJson is null, initiate the string, else append the new json object
         if (statsJson is not null)
         {
-            statsJson += $", \"{sampleNumber}\": {{Service: {GetCurrentStatsInJson()}, CPE: {GetCPEStatsString()}}}";
+            statsJson += $", \"{sampleNumber}\": {{\"Service\": {GetCurrentStatsInJson()}, \"CPE\": {GetCPEStatsString()}}}";
         }
         else {
-            statsJson = $"\"{sampleNumber}\": {{Service: {GetCurrentStatsInJson()}, CPE: {GetCPEStatsString()}}}";
+            statsJson = $"\"{sampleNumber}\": {{\"Service\": {GetCurrentStatsInJson()}, \"CPE\": {GetCPEStatsString()}}}";
         }
         // Increase the sample counter
         sampleNumber++;
@@ -85,7 +92,7 @@ public class RestManager : MonoBehaviour
         sampleNumber = 0;
     }
 
-    public void SendStats(string timestamp, string jsonData) {
+    public void SendStats(string jsonData, string timestamp = null) {
         // Create a thread to send stats
         StartCoroutine(SendStatsToRest(timestamp, jsonData));
     }
@@ -94,8 +101,15 @@ public class RestManager : MonoBehaviour
 
     #region COROUTINES
     private IEnumerator SendStatsToRest(string timestamp, string jsonData) {
+        // Declare a webRequest object
+        UnityWebRequest webRequest;
 
-        UnityWebRequest webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/{timestamp}", jsonData);
+        // Target an endpoint depending if the mode is Testbed or Demo
+        if(mode == 0) webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/testbed/{timestamp}", jsonData);
+        else webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/demo/", jsonData);
+        Debug.Log($"(REST Manager) --> Trying to send stats to: {webRequest.url} \nStats: {jsonData}");
+
+        //UnityWebRequest webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/{timestamp}", jsonData);
         UnityWebRequestAsyncOperation webResponse = webRequest.SendWebRequest();
 
         // Wait until a response is received 
@@ -110,22 +124,23 @@ public class RestManager : MonoBehaviour
             switch (webRequest.result)
             {
                 case UnityWebRequest.Result.ConnectionError:
-                    Debug.LogError(pages[page] + ": Connection error!");
+                    Debug.LogError("(REST Manager)-- >" + pages[page] + ": Connection error!");
                     break;
                 case UnityWebRequest.Result.DataProcessingError:
-                    Debug.LogError(pages[page] + ": Error: " + webRequest.error);
+                    Debug.LogError("(REST Manager)-- >" + pages[page] + ": Error: " + webRequest.error);
                     break;
                 case UnityWebRequest.Result.ProtocolError:
-                    Debug.LogError(pages[page] + ": HTTP Error: " + webRequest.error);
+                    Debug.LogError("(REST Manager)-- >" + pages[page] + ": HTTP Error: " + webRequest.error
+                        + "Data: " +webRequest.downloadHandler.text);
                     break;
                 case UnityWebRequest.Result.Success:
-                    Debug.Log($"REST Manager --> Stats sucessfully sent to the Rest server {pages[page]}");
+                    Debug.Log($"(REST Manager) --> Stats sucessfully sent to the Rest server {pages[page]}");
                     break;
             }
         }
         else
         {
-            Debug.Log($"REST Manager --> Error reaching the Web Server {pages[page]} with HEAD request");
+            Debug.Log($"(EST Manager) --> Error reaching the Web Server {pages[page]} with HEAD request");
         }
     }
     #endregion

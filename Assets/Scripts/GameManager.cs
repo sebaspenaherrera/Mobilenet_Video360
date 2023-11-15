@@ -7,13 +7,18 @@ public class GameManager : MonoBehaviour
 {
     // ******************************** FIELDS **************************************
     // Initial parameters (Should be loaded from the Player Prefs variables)
-    private int mode = 0;
-    private int maxIteration = 4;
-    private int duration = 10;
-    private string media_URL = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-    //"https://cdn.bitmovin.com/content/assets/playhouse-vr/mpds/105560.mpd"
-    private string rest_URL = "127.0.0.1:8000/Video360";
-    private bool isCPEenabled = true;
+    private int mode;
+    private int maxIteration;
+    private int duration;
+    private string media_URL = "";
+    private string rest_URL = "";
+    private bool isCPEenabled;
+
+    private string cpe_url = "";
+    private string cpe_username = "";
+    private string cpe_password = "";
+    private int cpe_interval;
+    private int cpe_max_attempts;
 
     // Shared instance for GameManager resources access
     private static GameManager _sharedInstance;
@@ -51,6 +56,19 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         _sharedInstance = this;
+
+        // Set the values from the menu
+        rest_URL = PlayerPrefs.GetString("url_rest");
+        media_URL = PlayerPrefs.GetString("url_video");
+        maxIteration = PlayerPrefs.GetInt("iterations");
+        duration = PlayerPrefs.GetInt("duration");
+        mode = PlayerPrefs.GetInt("mode");
+        isCPEenabled = PlayerPrefs.GetInt("cpe_enabled") == 1;
+        cpe_url = PlayerPrefs.GetString("url_cpe");
+        cpe_username = PlayerPrefs.GetString("username");
+        cpe_password = PlayerPrefs.GetString("password");
+        cpe_interval = PlayerPrefs.GetInt("cpe_interval");
+        cpe_max_attempts = PlayerPrefs.GetInt("max_attempts");
     }
 
     // Add a media track in the queue
@@ -65,6 +83,7 @@ public class GameManager : MonoBehaviour
         player.AddMediaTrack(media_URL);
 
         // Activate/Deactivate the CPE client
+        cpe.SetCPEFields(cpe_url, cpe_username, cpe_password, cpe_interval, cpe_max_attempts);
         cpe.SetEnableCPE(isCPEenabled);
     }
 
@@ -82,7 +101,7 @@ public class GameManager : MonoBehaviour
 
     // ****************************** CLASS METHODS **********************************
     void InstanceExperiment()
-    {
+    {   
         // IF CPE has been enable wait until the authentication is done
         if(cpe.IsConnectedWithCPE() || !isCPEenabled) {
             // EXPERIMENT CODE
@@ -99,8 +118,6 @@ public class GameManager : MonoBehaviour
                         experimentTimestamp = GetUnixTimestamp();
                         player.LoadMediaAndStart();
                         mediaOpened = true;
-
-
                     }
 
                     // HERE goes all the tasks that can be made each frame update (1/nFrames)s
@@ -144,7 +161,8 @@ public class GameManager : MonoBehaviour
                     stats.ResetStats();
 
                 }
-                //
+                // Reset counter to a default and constant if demo mode is selected
+                if (mode == 1) counterIter = 1;
 
             }
             else
@@ -234,8 +252,9 @@ public class GameManager : MonoBehaviour
                 rest.AppendJson();
                 break;
             case 1:
-                string statsJson = rest.GetCurrentStatsInJson();
-                //Todo SendStats()
+                string statsJson = rest.GetSampleStatsJson();
+                //string statsJson = rest.GetCurrentStatsInJson();
+                rest.SendStats(statsJson);
                 break;
         }
     }
@@ -245,8 +264,8 @@ public class GameManager : MonoBehaviour
         switch (mode)
         {
             case 0:
-                Debug.Log("Session stats = " + rest.GetSessionStatsJson());
-                //Todo SendStatsJson()
+                string statsJson = rest.GetSessionStatsJson();
+                rest.SendStats(statsJson, experimentTimestamp);
                 break;
             case 1:
                 break;
@@ -324,9 +343,14 @@ public class GameManager : MonoBehaviour
         return rest_URL;
     }
 
+    public int GetMode() {
+        return mode;
+    }
+
     // ******************************* SETTER METHODS *****************************
     public void SetInitTimeAsync(double value) {
         initTime = value;
     }
 
 }
+

@@ -136,7 +136,7 @@ public class LatencyManager : MonoBehaviour
                     case UnityWebRequest.Result.Success:
                         timeResponse = Time.realtimeSinceStartupAsDouble;
                         rtt = Mathf.Round((float)(timeResponse - timeRequest) * 100000.0f) / 100.0f;
-                        Debug.Log("RTT by HEAD request = " + rtt + " milliseconds");
+                        Debug.Log($"RTT by HEAD request to {webRequest.url} = {rtt} milliseconds");
                         break;
                 }
             }

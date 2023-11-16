@@ -20,6 +20,7 @@ public class UIManager : MonoBehaviour
     public TMPro.TMP_Text rttPing_txt;
     public TMPro.TMP_Text txRate_txt;
     public TMPro.TMP_Text rxRate_txt;
+    public TMPro.TMP_Text cpeStatus_txt;
 
     [Header("TIMES")]
     public TMPro.TMP_Text initTime_txt;
@@ -33,6 +34,7 @@ public class UIManager : MonoBehaviour
     // Alias
     private StatsManager stats;
     private GameManager gameManager;
+    private CPEClient cpe;
 
     // Shared instance
     private static UIManager _sharedInstance;
@@ -53,6 +55,7 @@ public class UIManager : MonoBehaviour
     {
         stats = StatsManager.GetInstance();
         gameManager = GameManager.GetInstance();
+        cpe = CPEClient.GetInstance();
         InvokeRepeating("UpdateText", 0.0f, 1.0f);
     }
 
@@ -96,6 +99,7 @@ public class UIManager : MonoBehaviour
         rttPing_txt.text = "Ping = " + stats.GetStatsObject().rtt_ping.ToString("0.000");
         txRate_txt.text = "Tx Rate = " + stats.GetStatsObject().tx_rate.ToString("0.000");
         rxRate_txt.text = "Rx Rate = " + stats.GetStatsObject().rx_rate.ToString("0.000");
+        cpeStatus_txt.text = "IsMonitoringCPE = " + cpe.IsMonitoringCPE();
 
         // TIMES
         initTime_txt.text = "Init time = " + stats.GetStatsObject().initTime.ToString("0.000");

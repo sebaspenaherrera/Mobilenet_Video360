@@ -83,6 +83,9 @@ public class MenuController : MonoBehaviour
 
     private void Awake()
     {
+        // Set the application to work even in background
+        Application.runInBackground = true;
+
         // Get the canvas group components for each section
         mainSection.TryGetComponent<CanvasGroup>(out canvas_main);
         configSection.TryGetComponent<CanvasGroup>(out canvas_config);

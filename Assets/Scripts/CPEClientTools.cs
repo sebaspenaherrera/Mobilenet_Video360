@@ -21,6 +21,8 @@ public static class CPEClientTools
     internal static string _sessionCookie = "";
     private static string _CurrentSessionID;
     private static string _CurrentToken;
+    // Set a flag to clear stats in order to avoid CPE to block API
+    private static int resetCounter = 1;
 
     /// <summary>
     /// Error code with its description
@@ -486,6 +488,7 @@ public static class CPEClientTools
     public static IEnumerator CPEMonitoring(this MonoBehaviour monoBehaviour, string ip_address, string username, string password, int maxAttempts, double iterTime, System.Action<bool> isMonitoring, System.Action<string> stats) {
         // Determine the initial time of this iteration
         double startTime = Time.realtimeSinceStartupAsDouble;
+        
 
         // Check if the glass has previously logged in with the CPE
         bool isLogged = false;
@@ -496,11 +499,6 @@ public static class CPEClientTools
         {
             yield return UserLogin(monoBehaviour, ip_address, username, password, maxAttempts, callback => { isLogged = callback; });
         }
-
-            
-        double spentTime = Time.realtimeSinceStartupAsDouble - startTime;
-        Debug.Log("Time spent in CPE login = " + spentTime);
-        startTime = Time.realtimeSinceStartupAsDouble;
 
         // If the attempt of Login was successful, request metrics, else jump this sample
         if (isLogged)
@@ -519,8 +517,12 @@ public static class CPEClientTools
             yield return GetTrafficJSON_internal(ip_address, callback => { trafficStats = callback; });
 
             // Reset stats
-            bool hasReset = false;
-            yield return ResetStats_internal(ip_address, callback => { hasReset = callback; });
+            if (resetCounter % 2 == 0) {
+                bool hasReset = false;
+                yield return ResetStats_internal(ip_address, callback => { hasReset = callback; });
+                
+            }
+            resetCounter++;
 
             // Build a JSON Node with that stats as subnodes
             // Wrap each request with a json node
@@ -539,7 +541,7 @@ public static class CPEClientTools
         }
 
         // Estimate the time spent in an iteration and the time to wait
-        spentTime = Time.realtimeSinceStartupAsDouble - startTime;
+        double spentTime = Time.realtimeSinceStartupAsDouble - startTime;
         double waitTimeValue = iterTime - spentTime;
         WaitForSecondsRealtime waitTime;
 
@@ -559,7 +561,6 @@ public static class CPEClientTools
 
         // Suspend the thread until the time passes
         yield return waitTime;
-        Debug.Log("Time spent in CPE stats query = " + spentTime);
     }
 
     public static IEnumerator GetSignalJSON_internal(string ip_address, System.Action<JSONNode> stats) {

@@ -42,6 +42,7 @@ public class GameManager : MonoBehaviour
 
     private bool mediaOpened = false;
     private bool firstSecond = false;
+    private bool resetCPEstats = false;
 
     private string experimentTimestamp = "";
     // Alias
@@ -105,6 +106,7 @@ public class GameManager : MonoBehaviour
         // IF CPE has been enable wait until the authentication is done
         if(cpe.IsConnectedWithCPE() || !isCPEenabled) {
             // EXPERIMENT CODE
+            
             // Control the number of iterations of the experiment (Starts from 0)
             if (counterIter < maxIteration)
             {
@@ -115,6 +117,8 @@ public class GameManager : MonoBehaviour
                     // Check if the iteration has initiated the playback
                     if (!mediaOpened)
                     {
+                        // CPE Reset to be done
+                        this.resetCPEstats = true;
                         experimentTimestamp = GetUnixTimestamp();
                         player.LoadMediaAndStart();
                         mediaOpened = true;
@@ -347,9 +351,21 @@ public class GameManager : MonoBehaviour
         return mode;
     }
 
+    public bool GetShouldResetCPE() {
+        return resetCPEstats;
+    }
+
+    public int GetDuration() {
+        return duration;
+    }
+
     // ******************************* SETTER METHODS *****************************
     public void SetInitTimeAsync(double value) {
         initTime = value;
+    }
+
+    public void SetShouldResetCPE(bool value) {
+        resetCPEstats = value;
     }
 
 }

@@ -22,7 +22,9 @@ public static class CPEClientTools
     private static string _CurrentSessionID;
     private static string _CurrentToken;
     // Set a flag to clear stats in order to avoid CPE to block API
-    private static int resetCounter = 1;
+    private static int resetCounter = 0;
+    // Instance of GameManager
+    private static GameManager gameManager;
 
     /// <summary>
     /// Error code with its description
@@ -517,12 +519,17 @@ public static class CPEClientTools
             yield return GetTrafficJSON_internal(ip_address, callback => { trafficStats = callback; });
 
             // Reset stats
-            if (resetCounter % 2 == 0) {
+            if (resetCounter == 0) {
                 bool hasReset = false;
                 yield return ResetStats_internal(ip_address, callback => { hasReset = callback; });
-                
             }
+
+            // Increase counter. When counter reaches == duration in seconds, resets (reset per configured session)
             resetCounter++;
+            if (resetCounter == GameManager.GetInstance().GetDuration())
+            {
+                resetCounter = 0;
+            }
 
             // Build a JSON Node with that stats as subnodes
             // Wrap each request with a json node

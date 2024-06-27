@@ -13,6 +13,11 @@ public class GameManager : MonoBehaviour
     private string media_URL = "";
     private string rest_URL = "";
     private bool isCPEenabled;
+    private bool isCrowd_enabled;
+    private bool send_rest_ack = false;
+    private bool new_session_ack = false;
+    private bool stats_sent = false;
+    private RestResponse rest_response;
 
     private string cpe_url = "";
     private string cpe_username = "";
@@ -43,6 +48,7 @@ public class GameManager : MonoBehaviour
     private bool mediaOpened = false;
     private bool firstSecond = false;
     private bool resetCPEstats = false;
+    private bool rest_ack = false;
 
     private string experimentTimestamp = "";
     // Alias
@@ -65,6 +71,7 @@ public class GameManager : MonoBehaviour
         duration = PlayerPrefs.GetInt("duration");
         mode = PlayerPrefs.GetInt("mode");
         isCPEenabled = PlayerPrefs.GetInt("cpe_enabled") == 1;
+        isCrowd_enabled = PlayerPrefs.GetInt("crowd_enabled") == 1;
         cpe_url = PlayerPrefs.GetString("url_cpe");
         cpe_username = PlayerPrefs.GetString("username");
         cpe_password = PlayerPrefs.GetString("password");
@@ -86,6 +93,17 @@ public class GameManager : MonoBehaviour
         // Activate/Deactivate the CPE client
         cpe.SetCPEFields(cpe_url, cpe_username, cpe_password, cpe_interval, cpe_max_attempts);
         cpe.SetEnableCPE(isCPEenabled);
+
+        // Activate/Deactivate the Crowd Requests
+        /*if (isCrowd_enabled)
+        {
+            send_rest_ack = false;
+            rest_ack = false;
+        }
+        else {
+            send_rest_ack = true;
+            rest_ack = true;
+        }*/
     }
 
     private void Update()
@@ -114,6 +132,18 @@ public class GameManager : MonoBehaviour
                 // Check the duration of a playback (Playback time < Duration = Active session)
                 if (counterTime <= duration)
                 {
+                    // Start the iteration only when ACKed by the rest
+                    if (!send_rest_ack) {
+                        rest.SendHelloToRest(id: GetUnixTimestamp());
+
+                        send_rest_ack = true;
+                    }
+                    if (!rest_ack) {
+                        Debug.Log("REST ACK value: " + this.rest_ack);
+                        return;
+                    }
+                    
+                    Debug.Log("He salido del bucle");
                     // Check if the iteration has initiated the playback
                     if (!mediaOpened)
                     {
@@ -154,13 +184,33 @@ public class GameManager : MonoBehaviour
                 {
                     mediaOpened = player.CloseMediaPlayer();
                     // Try to send session stats if testbed mode is set, else ignore this line
-                    SendSessionStats();
+                    if (!this.stats_sent) {
+                        SendSessionStats();
+                        this.stats_sent = true;
+                    }
+                    // Freeze the session until ACK is received from the REST server
+                    if (!this.new_session_ack) {
+                        return;
+                    }
+                    Debug.LogWarning("REST ACK for new session: " + this.new_session_ack);
+
                     // Set the parameters for a new iteration
                     counterIter++;
                     counterTime = 0;
                     resProfile = 0;
                     resSW = 0;
                     firstSecond = false;
+                    new_session_ack = false;
+                    stats_sent = false;
+
+                    // If crowd is enabled, reset the flags
+                    /*if (isCrowd_enabled){
+                        rest_ack = false;
+                        send_rest_ack = false;
+                    }*/
+                    rest_ack = false;
+                    send_rest_ack = false;
+
                     player.GetPlayerInfo().GetPlaybackQualityStats().Reset();
                     stats.ResetStats();
 
@@ -351,6 +401,10 @@ public class GameManager : MonoBehaviour
         return mode;
     }
 
+    public bool GetCrowdEnable() {
+        return isCrowd_enabled;
+    }
+
     public bool GetShouldResetCPE() {
         return resetCPEstats;
     }
@@ -368,5 +422,12 @@ public class GameManager : MonoBehaviour
         resetCPEstats = value;
     }
 
+    public void SetRestAck(bool value) {
+        rest_ack = value;
+    }
+
+    public void SetNewSessionAck(bool value) {
+        new_session_ack = value;
+    }
 }
 

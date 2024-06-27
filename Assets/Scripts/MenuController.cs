@@ -19,7 +19,7 @@ public class MenuController : MonoBehaviour
         "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
     };
 
-    private const string url_rest_def = "http://127.0.0.1:8000/video360";
+    private const string url_rest_def = "http://127.0.0.1:8000/service/video360";
     private const int iterations_def = 60;
     private const int duration_def = 120;
     private const int mode_def = 0;  // 0 for Testbed (send stats per sesssion) and
@@ -34,6 +34,7 @@ public class MenuController : MonoBehaviour
     private const string cpe_password_def = "areyouready?1";
     private const int cpe_interval_def = 1;
     private const int cpe_max_attempts_def = 3;
+    private const int crowd_enabled_def = 1;
 
     
 
@@ -46,6 +47,7 @@ public class MenuController : MonoBehaviour
     private TMPro.TMP_Dropdown mode_dropdown;
     private TMPro.TMP_Dropdown video_dropdown;
     private Toggle cpe_toggle;
+    private Toggle crowd_toggle;
 
     // Objects in the UI main section ************************************************
     private CanvasGroup canvas_main;
@@ -54,6 +56,7 @@ public class MenuController : MonoBehaviour
     private TMPro.TMP_Text duration_txt;
     private TMPro.TMP_Text mode_txt;
     private TMPro.TMP_Text cpe_txt;
+    private TMPro.TMP_Text crowd_txt;
     private TMPro.TMP_Text video_txt;
 
     // Objects in the UI CPE section ************************************************
@@ -72,6 +75,7 @@ public class MenuController : MonoBehaviour
     private int m_mode = 0;
     private int m_cpe = 0;
     private int m_video = 0;
+    private int m_crowd = 0;
     private string m_videotag = "";
 
     private string m_cpe_url = "";
@@ -97,6 +101,7 @@ public class MenuController : MonoBehaviour
         duration_txt = GameObject.FindGameObjectWithTag("durationTxt").GetComponent < TMPro.TMP_Text>();
         mode_txt = GameObject.FindGameObjectWithTag("modeTxt").GetComponent<TMPro.TMP_Text>();
         cpe_txt = GameObject.FindGameObjectWithTag("cpeTxt").GetComponent<TMPro.TMP_Text>();
+        crowd_txt = GameObject.FindGameObjectWithTag("crowdTxt").GetComponent<TMPro.TMP_Text>();
         video_txt = GameObject.FindGameObjectWithTag("videoTxt").GetComponent<TMPro.TMP_Text>();
 
         // Get the children components from the config section
@@ -107,6 +112,7 @@ public class MenuController : MonoBehaviour
         video_dropdown = GameObject.FindGameObjectWithTag("videoDropdown").GetComponent<TMPro.TMP_Dropdown>();
         state_txt = GameObject.FindGameObjectWithTag("stateConfigTxt").GetComponent<TMPro.TextMeshProUGUI>();
         cpe_toggle = GameObject.FindGameObjectWithTag("cpeToggle").GetComponent<Toggle>();
+        crowd_toggle = GameObject.FindGameObjectWithTag("crowdToggle").GetComponent<Toggle>();
 
         // Get the children components from the CPE section
         cpeURL_input = GameObject.FindGameObjectWithTag("cpeURLInput").GetComponent<TMPro.TMP_InputField>();
@@ -124,6 +130,7 @@ public class MenuController : MonoBehaviour
         m_duration = PlayerPrefs.GetInt("duration");
         m_mode = PlayerPrefs.GetInt("mode");
         m_cpe = PlayerPrefs.GetInt("cpe_enabled");
+        m_crowd = PlayerPrefs.GetInt("crowd_enabled");
         m_video = PlayerPrefs.GetInt("video");
         m_videotag = PlayerPrefs.GetString("videotag");
         //CPE
@@ -145,6 +152,7 @@ public class MenuController : MonoBehaviour
         duration_input.onEndEdit.AddListener(delegate { ReadDuration(duration_input);});
         mode_dropdown.onValueChanged.AddListener(delegate { ReadMode(mode_dropdown); });
         cpe_toggle.onValueChanged.AddListener(delegate { ReadBooltoInt(cpe_toggle, out m_cpe); UpdateCPEState(); });
+        crowd_toggle.onValueChanged.AddListener(delegate { ReadBooltoInt(crowd_toggle, out m_crowd); UpdateCrowdState(); });
         video_dropdown.onValueChanged.AddListener(delegate { ReadDropdownValue(video_dropdown, out m_video); ReadDropdownTag(video_dropdown, out m_videotag); });
         // CPE
         cpeURL_input.onEndEdit.AddListener(delegate { ReadString(cpeURL_input, out m_cpe_url); });
@@ -159,6 +167,7 @@ public class MenuController : MonoBehaviour
         duration_txt.SetText(m_duration.ToString());
         mode_txt.SetText(MapMode(m_mode));
         cpe_txt.SetText(MapCPEState(m_cpe));
+        crowd_txt.SetText(MapBooleantoString(m_crowd));
         video_txt.SetText(media_url_list[m_video]);
 
         // Set the presaved configuration in the config section
@@ -167,6 +176,7 @@ public class MenuController : MonoBehaviour
         duration_input.text = m_duration.ToString();
         mode_dropdown.value = m_mode;
         cpe_toggle.isOn = m_cpe == 1 ? true : false;
+        crowd_toggle.isOn = m_crowd == 1 ? true : false;
         video_dropdown.value = m_video;
 
         // Set the presaved configuration in the cpe section
@@ -286,6 +296,7 @@ public class MenuController : MonoBehaviour
         _ = int.TryParse(duration_input.text, out m_duration);
         m_mode = mode_dropdown.value;
         ReadBooltoInt(cpe_toggle, out m_cpe);
+        ReadBooltoInt(crowd_toggle, out m_crowd);
         ReadDropdownValue(video_dropdown, out m_video);
         ReadDropdownTag(video_dropdown, out m_videotag);
         
@@ -296,6 +307,7 @@ public class MenuController : MonoBehaviour
         PlayerPrefs.SetInt("duration", m_duration);
         PlayerPrefs.SetInt("mode", m_mode);
         PlayerPrefs.SetInt("cpe_enabled", m_cpe);
+        PlayerPrefs.SetInt("crowd_enabled", m_crowd);
         PlayerPrefs.SetInt("video", m_video);
         PlayerPrefs.SetString("videotag", m_videotag);
         PlayerPrefs.SetString("url_video", media_url_list[m_video]);
@@ -306,6 +318,7 @@ public class MenuController : MonoBehaviour
         duration_txt.SetText(m_duration.ToString());
         mode_txt.SetText(MapMode(m_mode));
         cpe_txt.SetText(MapCPEState(m_cpe));
+        crowd_txt.SetText(MapBooleantoString(m_crowd));
         video_txt.SetText(media_url_list[m_video]);
 
         // Set a warning message
@@ -322,6 +335,7 @@ public class MenuController : MonoBehaviour
         PlayerPrefs.SetInt("duration", duration_def);
         PlayerPrefs.SetInt("mode", mode_def);
         PlayerPrefs.SetInt("cpe_enabled", cpe_enabled_def);
+        PlayerPrefs.SetInt("crowd_enabled", crowd_enabled_def);
         PlayerPrefs.SetInt("video", video_def);
         PlayerPrefs.SetString("videotag", videotag_def);
         PlayerPrefs.SetString("url_video", video_url_def);
@@ -332,6 +346,7 @@ public class MenuController : MonoBehaviour
         m_duration = duration_def;
         m_mode = mode_def;
         m_cpe = cpe_enabled_def;
+        m_crowd = crowd_enabled_def;
         m_video = video_def;
         m_videotag = videotag_def;
 
@@ -341,6 +356,7 @@ public class MenuController : MonoBehaviour
         duration_input.text = duration_def.ToString();
         mode_dropdown.value = mode_def;
         cpe_toggle.isOn = cpe_enabled_def == 1 ? true : false;
+        crowd_toggle.isOn = crowd_enabled_def == 1 ? true : false;
         video_dropdown.value = video_def;
 
         // Overwrite the text fields in the main section
@@ -349,6 +365,7 @@ public class MenuController : MonoBehaviour
         duration_txt.SetText(duration_def.ToString());
         mode_txt.SetText(MapMode(mode_def));
         cpe_txt.SetText(MapCPEState(cpe_enabled_def));
+        crowd_txt.SetText(MapBooleantoString(crowd_enabled_def));
         video_txt.SetText(video_url_def);
 
         // Reset the text fields in the config section
@@ -377,6 +394,11 @@ public class MenuController : MonoBehaviour
             return "Demo";
         }
         else return "Error";
+    }
+
+    string MapBooleantoString(int value)
+    {
+        return value == 1 ? "Enabled" : "Disabled";
     }
 
     string MapCPEState(int value) {
@@ -429,6 +451,12 @@ public class MenuController : MonoBehaviour
     void UpdateCPEState() {
         cpe_txt.text = MapCPEState(m_cpe);
         PlayerPrefs.SetInt("cpe_enabled", m_cpe);
+    }
+
+    void UpdateCrowdState()
+    {
+        crowd_txt.text = MapBooleantoString(m_crowd);
+        PlayerPrefs.SetInt("crowd_enabled", m_crowd);
     }
 
     void ReadDropdownTag(TMPro.TMP_Dropdown dropdown, out string variable) {

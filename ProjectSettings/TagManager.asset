@@ -24,6 +24,8 @@ TagManager:
   - cpeTxt
   - videoDropdown
   - videoTxt
+  - crowdToggle
+  - crowdTxt
   layers:
   - Default
   - TransparentFX

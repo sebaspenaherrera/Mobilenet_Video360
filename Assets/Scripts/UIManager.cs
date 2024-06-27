@@ -21,6 +21,7 @@ public class UIManager : MonoBehaviour
     public TMPro.TMP_Text txRate_txt;
     public TMPro.TMP_Text rxRate_txt;
     public TMPro.TMP_Text cpeStatus_txt;
+    public TMPro.TMP_Text crowdStatus_txt;
 
     [Header("TIMES")]
     public TMPro.TMP_Text initTime_txt;
@@ -100,6 +101,7 @@ public class UIManager : MonoBehaviour
         txRate_txt.text = "Tx Rate = " + stats.GetStatsObject().tx_rate.ToString("0.000");
         rxRate_txt.text = "Rx Rate = " + stats.GetStatsObject().rx_rate.ToString("0.000");
         cpeStatus_txt.text = "IsMonitoringCPE = " + cpe.IsMonitoringCPE();
+        crowdStatus_txt.text = "IsMonitoringCrowd = " + gameManager.GetCrowdEnable();
 
         // TIMES
         initTime_txt.text = "Init time = " + stats.GetStatsObject().initTime.ToString("0.000");

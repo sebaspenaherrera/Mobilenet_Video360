@@ -50,6 +50,8 @@ public class GameManager : MonoBehaviour
     private bool resetCPEstats = false;
     private bool rest_ack = false;
 
+    private long status_code = 0;
+
     private string experimentTimestamp = "";
     // Alias
     private PlayerManager player;
@@ -159,6 +161,7 @@ public class GameManager : MonoBehaviour
                     if (IsANewSecond())
                     {
                         InterSecondTasks();
+                        Debug.Log(Time.fixedDeltaTime);
                     }
                     // If an entire second has passed, average the instantaneous frame rates, reset the cycles counter
                     // and increase the time counter in one second. 
@@ -185,7 +188,7 @@ public class GameManager : MonoBehaviour
                     mediaOpened = player.CloseMediaPlayer();
                     // Try to send session stats if testbed mode is set, else ignore this line
                     if (!this.stats_sent) {
-                        SendSessionStats();
+                        SendSessionStats(timeout:20);
                         this.stats_sent = true;
                     }
                     // Freeze the session until ACK is received from the REST server
@@ -195,24 +198,25 @@ public class GameManager : MonoBehaviour
                     Debug.LogWarning("REST ACK for new session: " + this.new_session_ack);
 
                     // Set the parameters for a new iteration
-                    counterIter++;
-                    counterTime = 0;
-                    resProfile = 0;
-                    resSW = 0;
-                    firstSecond = false;
-                    new_session_ack = false;
-                    stats_sent = false;
+                    Debug.LogWarning("Status code:" + this.status_code);
+                    if (status_code != 0)
+                    {
+                        counterIter++;
+                        counterTime = 0;
+                        resProfile = 0;
+                        resSW = 0;
+                        firstSecond = false;
+                        new_session_ack = false;
+                        stats_sent = false;
 
-                    // If crowd is enabled, reset the flags
-                    /*if (isCrowd_enabled){
                         rest_ack = false;
                         send_rest_ack = false;
-                    }*/
-                    rest_ack = false;
-                    send_rest_ack = false;
 
-                    player.GetPlayerInfo().GetPlaybackQualityStats().Reset();
-                    stats.ResetStats();
+                        player.GetPlayerInfo().GetPlaybackQualityStats().Reset();
+                        stats.ResetStats();
+
+                        status_code = 0;
+                    }
 
                 }
                 // Reset counter to a default and constant if demo mode is selected
@@ -313,13 +317,22 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void SendSessionStats() {
+    void SendSessionStats(int timeout = 20) {
         // If testbed mode is set, send stats to the rest server, else do nothing
         switch (mode)
         {
             case 0:
                 string statsJson = rest.GetSessionStatsJson();
-                rest.SendStats(statsJson, experimentTimestamp);
+
+                // Send the stats ans wait for the REST response (not longer than the session duration)
+                if (timeout < duration)
+                {
+                    rest.SendStats(statsJson, experimentTimestamp, timeout: timeout);
+                }
+                else {
+                    rest.SendStats(statsJson, experimentTimestamp, timeout: duration-1);
+                }
+                
                 break;
             case 1:
                 break;
@@ -409,6 +422,10 @@ public class GameManager : MonoBehaviour
         return resetCPEstats;
     }
 
+    public bool GetCPEStatus() {
+        return isCPEenabled; 
+    }
+
     public int GetDuration() {
         return duration;
     }
@@ -428,6 +445,10 @@ public class GameManager : MonoBehaviour
 
     public void SetNewSessionAck(bool value) {
         new_session_ack = value;
+    }
+
+    public void SetSessionStatusCode(long value) {
+        status_code = value;
     }
 }
 

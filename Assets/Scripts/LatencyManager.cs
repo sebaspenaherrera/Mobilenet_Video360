@@ -229,22 +229,22 @@ public class LatencyManager : MonoBehaviour
 
     #region CLASS METHODS
     // Create a GET HTTP request
-    public static UnityWebRequest CreateApiGetRequest(string url, string body = null)
+    public static UnityWebRequest CreateApiGetRequest(string url, string body = null, int timeout = 50)
     {
-        return CreateHttpRequest(UnityWebRequest.kHttpVerbGET, url, body, "application/json");
+        return CreateHttpRequest(UnityWebRequest.kHttpVerbGET, url, body, "application/json", timeout:timeout);
     }
 
     // Create a POST HTTP request
-    public static UnityWebRequest CreateApiPostRequest(string url, string body = null)
+    public static UnityWebRequest CreateApiPostRequest(string url, string body = null, int timeout = 50)
     {
-        return CreateHttpRequest(UnityWebRequest.kHttpVerbPOST, url, body, "application/json");
+        return CreateHttpRequest(UnityWebRequest.kHttpVerbPOST, url, body, "application/json", timeout:timeout);
     }
 
     public UnityWebRequest CreateHeadRequest() {
         return CreateHttpRequest(UnityWebRequest.kHttpVerbHEAD, url);
     }
 
-    private static UnityWebRequest CreateHttpRequest(string method, string url, string body = null, string typeContent = null)
+    private static UnityWebRequest CreateHttpRequest(string method, string url, string body = null, string typeContent = null, int timeout = 50)
     {
         // Initialize web request
         var request = new UnityWebRequest();
@@ -255,10 +255,10 @@ public class LatencyManager : MonoBehaviour
                 request = UnityWebRequest.Head(url);
                 break;
             case UnityWebRequest.kHttpVerbGET:
-                request = ConfigureCustomHttpRequest(method, url, body, typeContent);
+                request = ConfigureCustomHttpRequest(method, url, body, typeContent, timeout);
                 break;
             case UnityWebRequest.kHttpVerbPOST:
-                request = ConfigureCustomHttpRequest(method, url, body, typeContent);
+                request = ConfigureCustomHttpRequest(method, url, body, typeContent, timeout);
                 break;
             default:
                 request = null;
@@ -269,7 +269,7 @@ public class LatencyManager : MonoBehaviour
         return request;
     }
 
-    public static UnityWebRequest ConfigureCustomHttpRequest(string method, string url, string body = null, string typeContent = null) {
+    public static UnityWebRequest ConfigureCustomHttpRequest(string method, string url, string body = null, string typeContent = null, int timeout = 50) {
 
         var request = new UnityWebRequest();
         request.url = url;
@@ -278,7 +278,7 @@ public class LatencyManager : MonoBehaviour
         request.uploadHandler = new UploadHandlerRaw(string.IsNullOrEmpty(body) ? null : Encoding.UTF8.GetBytes(body));
         request.SetRequestHeader("Accept", typeContent);
         request.SetRequestHeader("Content-Type", typeContent);
-        request.timeout = 50;
+        request.timeout = timeout;
         return request;
     }
 

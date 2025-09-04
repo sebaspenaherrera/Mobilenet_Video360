@@ -58,6 +58,7 @@ public class RestManager : MonoBehaviour
         Debug.Log("host:" + rest_host);
         mode = gameManager.GetMode();
         crowd = gameManager.GetCrowdEnable();
+        cpe = gameManager.GetCPEStatus();
     }
 
     #endregion
@@ -109,9 +110,9 @@ public class RestManager : MonoBehaviour
         sampleNumber = 0;
     }
 
-    public void SendStats(string jsonData, string timestamp = null) {
+    public void SendStats(string jsonData, string timestamp = null, int timeout = 50) {
         // Create a thread to send stats
-        StartCoroutine(SendStatsToRest(timestamp, jsonData, callback => { unlockNextIteration(callback); }));
+        StartCoroutine(SendStatsToRest(timestamp, jsonData, callback => { unlockNextIteration(callback); }, callback2 => { set_stats_status_code(callback2); }, timeout: timeout));
     }
 
     public void SendHelloToRest(string id = null) {
@@ -144,6 +145,10 @@ public class RestManager : MonoBehaviour
     private void unlockNextIteration(bool value)
     {
         gameManager.SetNewSessionAck(value);
+    }
+
+    private void set_stats_status_code(long value) {
+        gameManager.SetSessionStatusCode(value);
     }
 
     #endregion
@@ -235,13 +240,14 @@ public class RestManager : MonoBehaviour
     }
 
 
-    private IEnumerator SendStatsToRest(string timestamp, string jsonData, System.Action<bool>response) {
+    private IEnumerator SendStatsToRest(string timestamp, string jsonData, System.Action<bool>response, System.Action<long>status_code, int timeout = 50) {
+
         // Declare a webRequest object
         UnityWebRequest webRequest;
 
         // Target an endpoint depending if the mode is Testbed or Demo
-        if(mode == 0) webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/testbed/{timestamp}", jsonData);
-        else webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/demo/", jsonData);
+        if(mode == 0) webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/testbed/{timestamp}", jsonData, timeout:timeout);
+        else webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/demo/", jsonData, timeout:timeout);
         Debug.Log($"(REST Manager) --> Trying to send stats to: {webRequest.url} \nStats: {jsonData}");
 
         //UnityWebRequest webRequest = LatencyManager.CreateApiPostRequest($"{rest_URL}/{timestamp}", jsonData);
@@ -260,6 +266,7 @@ public class RestManager : MonoBehaviour
             {
                 case UnityWebRequest.Result.ConnectionError:
                     Debug.LogError("(REST Manager)-- >" + pages[page] + ": Connection error!");
+                    
                     break;
                 case UnityWebRequest.Result.DataProcessingError:
                     Debug.LogError("(REST Manager)-- >" + pages[page] + ": Error: " + webRequest.error);
@@ -280,6 +287,7 @@ public class RestManager : MonoBehaviour
 
         // Send the ACK to unblock next iteration
         response.Invoke(true);
+        status_code.Invoke(webRequest.responseCode);
     }
     #endregion
 

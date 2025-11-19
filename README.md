@@ -97,7 +97,7 @@ The following KQIs are tracked and exported from the player runtime:
 
 - **Optional**: Monitor and log KQIs for performance evaluation. By default, you can use [360-video WebUI](https://github.com/sebaspenaherrera/Video360_WebUI).
 
-‼️ ## References
+## ‼️ References
 
 The repository content was developed in the context of the project AECMA-5G: Advanced End-to-End Cellular Management for 5G Applications. Please refer to the following publication:
 

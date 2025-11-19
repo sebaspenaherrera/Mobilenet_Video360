@@ -96,3 +96,9 @@ The following KQIs are tracked and exported from the player runtime:
 - Play a 360-video stream and gather some interesting metrics!
 
 - **Optional**: Monitor and log KQIs for performance evaluation. By default, you can use [360-video WebUI](https://github.com/sebaspenaherrera/Video360_WebUI).
+
+‼️ ## References
+
+The repository content was developed in the context of the project AECMA-5G: Advanced End-to-End Cellular Management for 5G Applications. Please refer to the following publication:
+
+[KQI Assessment of VR Services: A Case Study on 360-Video Over 4G and 5G](https://ieeexplore.ieee.org/abstract/document/9833911)
